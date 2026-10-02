@@ -27,12 +27,28 @@ Run `nix fmt` to format the repository.
 
 ## Installing
 
-```sh
-nix build   # or `nix run`
+Add the flake as an input:
+
+```nix
+inputs.gchat-desktop = {
+  url = "github:drew-council/gchat-desktop";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
 ```
 
-The package includes a `gchat-desktop` binary and a desktop entry. Sessions are
-stored in `~/.config/gchat-desktop`.
+Then either install the package directly:
+
+```nix
+environment.systemPackages = [ inputs.gchat-desktop.packages.${pkgs.system}.default ];
+# or, in Home Manager: home.packages = [ ... ];
+```
+
+or apply `inputs.gchat-desktop.overlays.default` and use `pkgs.gchat-desktop`,
+which builds against your nixpkgs (including its Electron).
+
+The package installs a `gchat-desktop` binary, a "Google Chat" desktop entry,
+and icons in the hicolor theme. Sessions are stored in `~/.config/gchat-desktop`.
+To try it without installing, run `nix run github:drew-council/gchat-desktop`.
 
 ## License
 

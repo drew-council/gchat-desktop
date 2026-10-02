@@ -17,7 +17,13 @@
       treefmt-nix,
       ...
     }:
-    flake-utils.lib.eachDefaultSystem (
+    {
+      # Builds against the consumer's nixpkgs, including their Electron.
+      overlays.default = final: _prev: {
+        gchat-desktop = final.callPackage ./nix/package.nix { };
+      };
+    }
+    // flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs {
@@ -30,64 +36,11 @@
             ./treefmt.nix
           ];
         };
-        packageJson = lib.importJSON ./package.json;
       in
       {
-        packages.default = pkgs.stdenvNoCC.mkDerivation {
-          pname = packageJson.name;
-          inherit (packageJson) version;
-
-          src = lib.fileset.toSource {
-            root = ./.;
-            fileset = lib.fileset.unions [
-              ./package.json
-              ./src
-            ];
-          };
-
-          nativeBuildInputs = [
-            pkgs.bun
-            pkgs.makeWrapper
-          ]
-          ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.copyDesktopItems ];
-
-          # The app has no runtime npm dependencies, so building is just
-          # bundling the sources; no `bun install` needed.
-          buildPhase = ''
-            runHook preBuild
-            export HOME=$TMPDIR
-            bun run build
-            runHook postBuild
-          '';
-
-          installPhase = ''
-            runHook preInstall
-            mkdir -p $out/share/gchat-desktop
-            cp -r package.json dist $out/share/gchat-desktop/
-            makeWrapper ${lib.getExe pkgs.electron} $out/bin/gchat-desktop \
-              --add-flags $out/share/gchat-desktop
-            runHook postInstall
-          '';
-
-          desktopItems = [
-            (pkgs.makeDesktopItem {
-              name = "gchat-desktop";
-              desktopName = "Google Chat";
-              exec = "gchat-desktop %U";
-              icon = "internet-chat";
-              categories = [
-                "Network"
-                "InstantMessaging"
-                "Chat"
-              ];
-              startupWMClass = "gchat-desktop";
-            })
-          ];
-
-          meta = {
-            inherit (packageJson) description;
-            mainProgram = "gchat-desktop";
-          };
+        packages = {
+          default = self.packages.${system}.gchat-desktop;
+          gchat-desktop = pkgs.callPackage ./nix/package.nix { };
         };
 
         devShells.default = pkgs.mkShell {
@@ -107,7 +60,10 @@
         };
 
         formatter = treefmtEval.config.build.wrapper;
-        checks.formatting = treefmtEval.config.build.check self;
+        checks = {
+          formatting = treefmtEval.config.build.check self;
+          package = self.packages.${system}.gchat-desktop;
+        };
       }
     );
 }

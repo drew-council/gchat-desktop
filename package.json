@@ -4,6 +4,7 @@
   "description": "A thin desktop wrapper around Google Chat",
   "type": "module",
   "main": "dist/main.js",
+  "desktopName": "gchat-desktop.desktop",
   "private": true,
   "scripts": {
     "build": "bun build src/main.ts --outfile dist/main.js --target node --format esm --external electron && bun build src/preload.ts --outfile dist/preload.cjs --target browser --format cjs --external electron",
