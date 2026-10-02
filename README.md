@@ -1,12 +1,39 @@
 # gchat-desktop
 
-This project uses Nix and direnv for a reproducible development environment.
+A thin Electron wrapper around [Google Chat](https://chat.google.com). It behaves
+like a single-site browser, with a few differences from the Chrome PWA:
 
-Configured languages: typescript.
+- Links that leave Chat open in your default browser (via `xdg-open` on Linux),
+  unwrapped from Google's `google.com/url?q=` redirector.
+- Sign-in, Chat pop-outs, and SSO flows stay in the app.
+- `src/patches.css` is injected into Chat, and `src/preload.ts` runs before
+  Chat's scripts, for UI and keybind tweaks.
 
-Run `direnv allow` to activate the development shell and `nix fmt` to format the repository.
+## Development
+
+This project uses Nix and direnv. Run `direnv allow` (or `nix develop`), then:
+
+```sh
+bun install       # electron is installed for its types; Nix provides the binary
+bun run start     # build and launch
+bun run typecheck
+bun test
+```
+
+On NixOS, the dev shell points the `electron` npm package at nixpkgs' Electron,
+so keep the version in `package.json` in step with nixpkgs' `electron`.
+
+Run `nix fmt` to format the repository.
+
+## Installing
+
+```sh
+nix build   # or `nix run`
+```
+
+The package includes a `gchat-desktop` binary and a desktop entry. Sessions are
+stored in `~/.config/gchat-desktop`.
 
 ## License
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your option.
-

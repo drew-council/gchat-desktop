@@ -3,3 +3,9 @@
 
 # TypeScript
 node_modules/
+
+# Build output
+dist/
+
+# Nix
+result

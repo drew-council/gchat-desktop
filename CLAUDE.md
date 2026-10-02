@@ -1,106 +1,26 @@
+An Electron wrapper around Google Chat. The app is the main process in
+`src/main.ts`; `src/links.ts` holds the pure URL-routing rules (unit tested in
+`src/links.test.ts`), `src/preload.ts` runs in Chat's pages, and
+`src/patches.css` is injected into them.
 
-Default to using Bun instead of Node.js.
+## Tooling
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+Bun is the package manager, bundler, and test runner; Electron (Node) is the
+runtime, so app code uses Node and Electron APIs, not `Bun.*`.
 
-## APIs
+- `bun run build` bundles `src/main.ts` (ESM) and `src/preload.ts` (CJS, as
+  sandboxed preloads require) into `dist/`.
+- `bun run start` builds and launches; `bun test` runs tests; `bun run typecheck`
+  runs `tsc`.
+- On Linux, the Nix dev shell sets `ELECTRON_OVERRIDE_DIST_PATH` so the npm
+  `electron` package launches nixpkgs' Electron; the npm package's own binary
+  is never downloaded. Keep its version matched to nixpkgs' `electron`.
+- `nix build` bundles with Bun and wraps nixpkgs' Electron; there are no
+  runtime npm dependencies, so it doesn't need `bun install`.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Gotchas
 
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+- Don't top-level `await app.whenReady()` in `src/main.ts`: Electron holds the
+  `ready` event until the ESM entry module finishes evaluating, so it deadlocks.
+- The user agent drops Electron's tokens because Google blocks sign-in from
+  browsers that look embedded.
