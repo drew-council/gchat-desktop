@@ -1,0 +1,190 @@
+// Catppuccin for Google Chat, built on the userstyle libraries vendored from
+// catppuccin/userstyles. Chat's own Appearance settings pick the theme: its
+// Light and Dark modes use the flavors below, and the preload script maps the
+// chosen color onto an accent through `data-catppuccin-accent` on the root.
+
+@lightFlavor: latte;
+@darkFlavor: mocha;
+
+@import (reference) "../vendor/catppuccin-userstyles/lib/std/v1.less";
+@import (reference) "../vendor/catppuccin-userstyles/lib/m3/v1.less";
+
+// Keep in sync with `Accent` in theme.ts.
+@accents: rosewater, flamingo, pink, mauve, red, maroon, peach, yellow, green,
+  teal, sky, sapphire, blue, lavender, subtext0;
+
+each(@accents, {
+  :root[data-catppuccin-accent="@{value}"] {
+    body:not([data-theme="dark"]) {
+      #catppuccin(@lightFlavor, @value);
+    }
+
+    // Chat themes some surfaces dark regardless of mode.
+    body[data-theme="dark"],
+    .Pc6wn {
+      #catppuccin(@darkFlavor, @value);
+    }
+  }
+});
+
+#catppuccin(@flavor, @accentColor) {
+  #lib.palette();
+  #__m3.base();
+  #__m3.with-prefix(gm3-sys-color-);
+
+  // Fixed colors Chat uses for avatars, labels, and chips.
+  #extended(purple, @mauve);
+  #extended(blue, @blue);
+  #extended(blue-variant, @sapphire);
+  #extended(cyan, @sky);
+  #extended(green, @green);
+  #extended(grey, @overlay2);
+  #extended(grey-variant, @overlay1);
+  #extended(orange, @peach);
+  #extended(pink, @pink);
+  #extended(red, @red);
+  #extended(yellow, @yellow);
+
+  #legacy();
+
+  ::selection {
+    background-color: fade(@accent, 30%);
+  }
+}
+
+// Chat's older variables, many of which are hardcoded instead of derived from
+// the Material tokens above.
+#legacy() {
+  // Catppuccin puts content on base and chrome on mantle, where Chat puts its
+  // panels on the darkest surface.
+  --body-canvas-background: @mantle;
+  --stream-container-background-color: @mantle;
+  --background-color: @base;
+  --topbar-bg-color: @mantle;
+  --bottombar-bg-color: @mantle;
+  --card-bg-color: @base;
+  --settings-header-bg-color: @base;
+  --settings-footer-bg-color: @base;
+  --create-space-card-bg-color: @mantle;
+  --frameless-flyout-bg-color: @surface0;
+  --custom-date-range-menu-bg-color: @mantle;
+  --info-banner-background: @surface0;
+  --assisted-writing-overlay-background-color: @surface0;
+  --app-hovercard-bg-primary: @mantle;
+
+  --topbar-header-text: @text;
+  --threaded-spaces-topbar-header-text: @text;
+  --header-text-color: @text;
+  --text-link-color: @text;
+  --world-group-text-color: @subtext0;
+  --world-group-unread-text-color: @text;
+  --hint-text-color: @overlay2;
+  --tertiary-hint-text-color: @overlay1;
+  --pill-text-color: @overlay2;
+  --disabled-text-color: @overlay1;
+  --disabled-text-color-alt: fade(@text, 38%);
+  --error-text-color: @red;
+  --input-placeholder-text-color: @overlay1;
+  --date-divider-color: @overlay1;
+  --list-item-snippet-default-color: @subtext0;
+  --list-item-unread-text-color: @subtext0;
+  --conversation-item-read-text-color: @subtext0;
+  --conversation-item-unnotified-unread-text-color: @subtext0;
+  --conversation-item-muted-text-color: @overlay1;
+  --conversation-header-secondary-text-color: @subtext0;
+  --member-management-secondary-text-color: @overlay2;
+  --info-banner-text-color: @text;
+  --info-banner-icon-color: @blue;
+
+  --icon-color: @overlay2;
+  --dark-icon-color: @overlay2;
+  --icon-hover-color: @text;
+  --icon-disabled-color: @surface2;
+  --icon-send-disabled-color: @surface2;
+  --icon-qw-disabled-color: fade(@text, 50%);
+  --icon-tag-remove-color: @crust;
+  --icon-alternate-color: @blue;
+  --icon-background-color: @surface0;
+  --icon-alternate-background-color: fade(@blue, 24%);
+  --tab-switcher-btn-color: @overlay2;
+
+  --dividers-color: @surface0;
+  --primary-line-color: @surface0;
+  --hairline-color: @surface0;
+  --dialog-line-color: @surface0;
+  --option-border-color: @surface0;
+  --top-bar-header-border-color: @surface0;
+  --collapsed-line-divider-color: @surface1;
+  --dialog-hairline-line-color: @overlay0;
+  --suggestions-line-color: @overlay0;
+  --suggestions-border-color: @surface0;
+  --message-inline-line-color: @surface2;
+  --message-block-line-color: @surface2;
+
+  --hover-state-color: fade(@text, 4%);
+  --focus-state-color: fade(@text, 12%);
+  --selected-state-color: fade(@accent, 24%);
+  --pressed-state-color: @text;
+  --list-item-hover-bg-color: fade(@text, 8%);
+  --list-item-focus-bg-color: fade(@text, 12%);
+  --message-accented-bg-color: fade(@text, 12%);
+  --message-highlight-bg-color: fade(@accent, 12%);
+  --search-quoted-highlight-bg-color: fade(@accent, 12%);
+  --side-panel-content-hover-color: fade(@text, 8%);
+
+  --scrollbar-thumb-color: @surface2;
+  --scrollbar-thumb-hover-color: @overlay0;
+  --scrollbar-thumb-active-color: @overlay1;
+
+  --message-background-color: @surface0;
+  --private-message-bg-color: @surface0;
+  --private-message-tag-bg-color: @mantle;
+  --side-panel-tombstone-message-bg-color: @surface0;
+  --quoted-message-media-bg-color: @surface1;
+  --surface-compose-box-color: @surface0;
+  --surface-chip-text-color: @overlay2;
+  --surface-reaction-text-color: @subtext1;
+  --postbar-bg-color: @surface0;
+
+  --roomatar-bg-color: @surface0;
+  --avatar-bg-color: @surface0;
+  --avatar-picker-bg-color: @surface1;
+  --avatar-helper-bg-color: @surface1;
+  --avatar-icon-color: @overlay2;
+
+  --chip-bg-color: @surface0;
+  --chip-border-color: @surface2;
+  --chip-subtitle-color: @overlay2;
+  --chip-hairline-color: @surface2;
+  --chip-hairline-hover-color: @surface0;
+  --inline-chip-bg-color: @surface1;
+  --tag-chip-bg-color: @surface0;
+  --tag-chip-color: @text;
+  --tag-chip-remove-icon-color: @surface2;
+  --pill-tag-bg-color: @mantle;
+  --app-pill-bg-color: @surface0;
+  --app-pill-text-color: @text;
+  --pill-external-bg-color: @yellow;
+  --pill-external-text-color: @base;
+
+  --badge-background-color: @red;
+  --badge-text-color: @base;
+  --badge-invite-bg-color: mix(@red, @base, @m3-tint);
+  --world-badge-color: @red;
+  --world-badge-bg-color: mix(@red, @base, @m3-tint);
+  --world-badge-border-color: @surface2;
+  --error-banner-background-color: @red;
+  --error-banner-icon-color: @base;
+  --error-banner-text-color: @base;
+}
+
+#extended(@name, @color) {
+  @tonal: mix(@color, @base, @m3-tint);
+
+  --chat-extended-color-@{name}-fill: @color;
+  --chat-extended-color-on-@{name}-fill: @base;
+  --chat-extended-color-@{name}-tonal: @tonal;
+  --chat-extended-color-on-@{name}-tonal: lighten(@color, @m3-emphasize);
+  --chat-extended-color-@{name}-outline: @tonal;
+  --chat-extended-color-on-@{name}-outline: @color;
+}

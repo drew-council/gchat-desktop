@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, shell, type WebContents } from "electron";
 import {
@@ -11,6 +12,12 @@ import {
 	unwrapRedirect,
 } from "./links";
 import patches from "./patches.css" with { type: "text" };
+
+// Compiled from catppuccin.less into dist/ alongside this bundle.
+const theme = readFileSync(
+	path.join(import.meta.dirname, "catppuccin.css"),
+	"utf8",
+);
 
 // Google refuses to sign in browsers that identify as embedded, so present as
 // the plain Chrome that Electron is built on.
@@ -60,7 +67,9 @@ function manage(contents: WebContents) {
 	});
 
 	contents.on("dom-ready", () => {
-		if (isChatUrl(contents.getURL())) void contents.insertCSS(patches);
+		if (!isChatUrl(contents.getURL())) return;
+		void contents.insertCSS(theme);
+		void contents.insertCSS(patches);
 	});
 }
 

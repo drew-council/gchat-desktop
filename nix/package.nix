@@ -3,6 +3,7 @@
   stdenvNoCC,
   bun,
   electron,
+  lessc,
   librsvg,
   makeWrapper,
   copyDesktopItems,
@@ -43,12 +44,14 @@ stdenvNoCC.mkDerivation {
     fileset = lib.fileset.unions [
       ../package.json
       ../src
+      ../vendor
       ../assets
     ];
   };
 
   nativeBuildInputs = [
     bun
+    lessc
     librsvg
     makeWrapper
   ]
@@ -60,8 +63,8 @@ stdenvNoCC.mkDerivation {
     python3
   ];
 
-  # The app has no runtime npm dependencies, so building is just bundling the
-  # sources; no `bun install` needed.
+  # The app has no runtime npm dependencies, so building is just compiling the
+  # theme and bundling the sources; no `bun install` needed.
   buildPhase = ''
     runHook preBuild
     export HOME=$TMPDIR

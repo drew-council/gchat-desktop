@@ -8,6 +8,11 @@ like a single-site browser, with a few differences from the Chrome PWA:
 - Sign-in, Chat pop-outs, and SSO flows stay in the app.
 - `src/patches.css` is injected into Chat, and `src/preload.ts` runs before
   Chat's scripts, for UI and keybind tweaks.
+- Chat is themed with [Catppuccin](https://catppuccin.com), using the
+  [userstyle](https://github.com/catppuccin/userstyles) libraries. Chat's
+  Appearance settings choose the theme: Light mode is Latte, Dark mode is
+  Mocha (both set at the top of `src/catppuccin.less`), and each color maps to
+  the nearest Catppuccin accent.
 
 ## Development
 
