@@ -46,8 +46,14 @@ environment.systemPackages = [ inputs.gchat-desktop.packages.${pkgs.system}.defa
 or apply `inputs.gchat-desktop.overlays.default` and use `pkgs.gchat-desktop`,
 which builds against your nixpkgs (including its Electron).
 
-The package installs a `gchat-desktop` binary, a "Google Chat" desktop entry,
-and icons in the hicolor theme. Sessions are stored in `~/.config/gchat-desktop`.
+On Linux, the package installs a `gchat-desktop` binary, a "Google Chat"
+desktop entry, and icons in the hicolor theme. Sessions are stored in
+`~/.config/gchat-desktop`.
+
+On macOS, it installs `Applications/Google Chat.app` (a rebranded copy of
+nixpkgs' `Electron.app`) and a `gchat-desktop` binary that launches it.
+Sessions are stored in `~/Library/Application Support/gchat-desktop`.
+
 To try it without installing, run `nix run github:drew-council/gchat-desktop`.
 
 ## License

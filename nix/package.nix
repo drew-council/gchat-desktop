@@ -7,9 +7,22 @@
   makeWrapper,
   copyDesktopItems,
   makeDesktopItem,
+  libicns,
+  python3,
 }:
 let
   packageJson = lib.importJSON ../package.json;
+  appName = "Google Chat";
+  # Sizes png2icns accepts for an .icns.
+  macIconSizes = [
+    16
+    32
+    48
+    128
+    256
+    512
+    1024
+  ];
   iconSizes = [
     16
     24
@@ -36,11 +49,15 @@ stdenvNoCC.mkDerivation {
 
   nativeBuildInputs = [
     bun
+    librsvg
     makeWrapper
   ]
   ++ lib.optionals stdenvNoCC.hostPlatform.isLinux [
-    librsvg
     copyDesktopItems
+  ]
+  ++ lib.optionals stdenvNoCC.hostPlatform.isDarwin [
+    libicns
+    python3
   ];
 
   # The app has no runtime npm dependencies, so building is just bundling the
@@ -54,12 +71,56 @@ stdenvNoCC.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-
+  ''
+  + lib.optionalString stdenvNoCC.hostPlatform.isLinux ''
     mkdir -p $out/share/gchat-desktop
     cp -r package.json dist $out/share/gchat-desktop/
     makeWrapper ${lib.getExe electron} $out/bin/gchat-desktop \
       --add-flags $out/share/gchat-desktop
+  ''
+  # macOS only treats an app as its own (Dock icon, menu bar name, Spotlight,
+  # notifications) when it runs from its own bundle, so rebrand a copy of
+  # Electron.app; Electron loads the app from Contents/Resources/app. The
+  # bundle's ad-hoc signature doesn't cover Info.plist, so editing it doesn't
+  # need a re-sign.
+  + lib.optionalString stdenvNoCC.hostPlatform.isDarwin ''
+    app="$out/Applications/${appName}.app"
+    mkdir -p $out/Applications
+    cp -r ${electron.dist}/Electron.app "$app"
+    chmod -R u+w "$app"
 
+    resources="$app/Contents/Resources"
+    rm "$resources/default_app.asar" "$resources/electron.icns"
+    mkdir "$resources/app"
+    cp -r package.json dist "$resources/app/"
+
+    for size in ${toString macIconSizes}; do
+      rsvg-convert -w $size -h $size assets/icon.svg -o icon_$size.png
+    done
+    png2icns "$resources/gchat-desktop.icns" icon_*.png
+
+    python3 - "$app/Contents/Info.plist" <<'EOF'
+    import plistlib, sys
+    with open(sys.argv[1], "rb") as f:
+        info = plistlib.load(f)
+    info.update(
+        CFBundleName="${appName}",
+        CFBundleDisplayName="${appName}",
+        CFBundleIdentifier="io.github.drew-council.gchat-desktop",
+        CFBundleIconFile="gchat-desktop.icns",
+        CFBundleShortVersionString="${packageJson.version}",
+        CFBundleVersion="${packageJson.version}",
+        LSApplicationCategoryType="public.app-category.social-networking",
+    )
+    # Hashes default_app.asar, which was removed above.
+    info.pop("ElectronAsarIntegrity", None)
+    with open(sys.argv[1], "wb") as f:
+        plistlib.dump(info, f)
+    EOF
+
+    makeWrapper "$app/Contents/MacOS/Electron" $out/bin/gchat-desktop
+  ''
+  + ''
     runHook postInstall
   '';
 
