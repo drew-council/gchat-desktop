@@ -1,5 +1,6 @@
 import path from "node:path";
 import { app, BrowserWindow, shell, type WebContents } from "electron";
+import { isDev, onDevCommand } from "./dev";
 import {
 	CHAT_URL,
 	isChatUrl,
@@ -21,6 +22,24 @@ app.userAgentFallback = app.userAgentFallback.replace(
 
 let mainWindow: BrowserWindow | undefined;
 let quitting = false;
+
+let currentPatches = patches;
+/** The key of the patches inserted into each Chat page, for swapping them out. */
+const insertedPatches = new Map<WebContents, string>();
+
+async function insertPatches(contents: WebContents) {
+	insertedPatches.set(contents, await contents.insertCSS(currentPatches));
+}
+
+async function replacePatches(css: string) {
+	currentPatches = css;
+	await Promise.all(
+		[...insertedPatches].map(async ([contents, key]) => {
+			await contents.removeInsertedCSS(key);
+			await insertPatches(contents);
+		}),
+	);
+}
 
 function openExternal(url: string) {
 	const target = unwrapRedirect(url);
@@ -60,8 +79,10 @@ function manage(contents: WebContents) {
 	});
 
 	contents.on("dom-ready", () => {
-		if (isChatUrl(contents.getURL())) void contents.insertCSS(patches);
+		if (isChatUrl(contents.getURL())) void insertPatches(contents);
+		else insertedPatches.delete(contents);
 	});
+	contents.on("destroyed", () => insertedPatches.delete(contents));
 }
 
 /**
@@ -149,4 +170,19 @@ if (!app.requestSingleInstanceLock()) {
 	// Not a top-level await: Electron holds `ready` until the entry module has
 	// finished evaluating, so awaiting it here would never resolve.
 	void app.whenReady().then(showMainWindow);
+
+	if (isDev) {
+		onDevCommand((command) => {
+			switch (command.type) {
+				case "reload":
+					for (const win of BrowserWindow.getAllWindows()) {
+						win.webContents.reload();
+					}
+					break;
+				case "css":
+					void replacePatches(command.css);
+					break;
+			}
+		});
+	}
 }
