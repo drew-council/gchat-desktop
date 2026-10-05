@@ -4,7 +4,9 @@
 // - Preload changes reload the pages.
 // - Main process changes restart Electron.
 //
-// Run with `bun run dev`; arguments after it are passed to Electron.
+// The Chrome DevTools Protocol is served on `devtoolsPort` for inspecting
+// Chat's pages. Run with `bun run dev`; arguments after it are passed to
+// Electron.
 
 import { watch } from "node:fs";
 import path from "node:path";
@@ -17,6 +19,7 @@ const outputs = {
 	main: path.join(root, "dist/main.js"),
 	preload: path.join(root, "dist/preload.cjs"),
 };
+const devtoolsPort = 9222;
 
 async function hash(file: string) {
 	return Bun.hash(await Bun.file(file).arrayBuffer());
@@ -35,7 +38,12 @@ let app: Bun.Subprocess<"pipe", "inherit", "inherit"> | undefined;
 
 function launch() {
 	const proc = Bun.spawn(
-		[electron as unknown as string, ".", ...process.argv.slice(2)],
+		[
+			electron as unknown as string,
+			".",
+			`--remote-debugging-port=${devtoolsPort}`,
+			...process.argv.slice(2),
+		],
 		{
 			cwd: root,
 			env: { ...process.env, GCHAT_DEV: "1" },
