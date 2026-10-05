@@ -1,7 +1,8 @@
 An Electron wrapper around Google Chat. The app is the main process in
 `src/main.ts`; `src/links.ts` holds the pure URL-routing rules (unit tested in
-`src/links.test.ts`), `src/preload.ts` runs in Chat's pages, and
-`src/patches.css` is injected into them.
+`src/links.test.ts`), `src/preload.ts` runs in Chat's pages and installs the
+behavior patches that each live in their own module (like
+`src/copy-button.ts`), and `src/patches.css` is injected into them.
 
 ## Tooling
 
