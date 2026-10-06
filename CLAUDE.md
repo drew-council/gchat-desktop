@@ -16,6 +16,9 @@ runtime, so app code uses Node and Electron APIs, not `Bun.*`.
 - On Linux, the Nix dev shell sets `ELECTRON_OVERRIDE_DIST_PATH` so the npm
   `electron` package launches nixpkgs' Electron; the npm package's own binary
   is never downloaded. Keep its version matched to nixpkgs' `electron`.
+- `bun run dev` serves the Chrome DevTools Protocol on port **52922**, not
+  CDP's default 9222 (kept off-default so generic tooling doesn't connect by
+  accident). Connect agents/debuggers to `http://localhost:52922`.
 - `nix build` bundles with Bun and wraps nixpkgs' Electron; there are no
   runtime npm dependencies, so it doesn't need `bun install`.
 

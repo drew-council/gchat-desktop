@@ -4,9 +4,9 @@
 // - Preload changes reload the pages.
 // - Main process changes restart Electron.
 //
-// The Chrome DevTools Protocol is served on `devtoolsPort` for inspecting
-// Chat's pages. Run with `bun run dev`; arguments after it are passed to
-// Electron.
+// The Chrome DevTools Protocol is served on `devtoolsPort` (52922, not the
+// default 9222) for inspecting Chat's pages. Run with `bun run dev`; arguments
+// after it are passed to Electron.
 
 import { watch } from "node:fs";
 import path from "node:path";
@@ -19,7 +19,9 @@ const outputs = {
 	main: path.join(root, "dist/main.js"),
 	preload: path.join(root, "dist/preload.cjs"),
 };
-const devtoolsPort = 9222;
+// Deliberately not CDP's default 9222, so generic tooling doesn't accidentally
+// connect to (or assume it can connect to) this app's DevTools socket.
+const devtoolsPort = 52922;
 
 async function hash(file: string) {
 	return Bun.hash(await Bun.file(file).arrayBuffer());
