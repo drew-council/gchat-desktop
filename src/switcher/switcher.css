@@ -1,0 +1,191 @@
+/* The quick switcher, in its own shadow root. Colors come from Chat's Material 3
+   theme variables, which the root inherits, so it follows Chat's theme. */
+
+dialog {
+	box-sizing: border-box;
+	width: min(640px, calc(100vw - 32px));
+	max-height: min(560px, calc(100vh - 96px));
+	margin: 12vh auto auto;
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid var(--gm3-sys-color-outline-variant, #c4c7c5);
+	border-radius: 16px;
+	background: var(--gm3-sys-color-surface-container-high, #e9eef6);
+	color: var(--gm3-sys-color-on-surface, #1f1f1f);
+	font-family: "Google Sans", Roboto, Arial, sans-serif;
+	font-size: 14px;
+	box-shadow:
+		0 4px 8px 3px rgb(0 0 0 / 15%),
+		0 1px 3px rgb(0 0 0 / 30%);
+}
+
+dialog[open] {
+	display: flex;
+}
+
+dialog::backdrop {
+	background: rgb(0 0 0 / 32%);
+}
+
+[cmdk-root] {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	min-height: 0;
+}
+
+.icon {
+	font-family: "Google Symbols", "Material Symbols Outlined", sans-serif;
+	font-size: 20px;
+	font-feature-settings: "liga";
+	font-weight: normal;
+	font-style: normal;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	white-space: nowrap;
+	user-select: none;
+}
+
+.search {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 0 20px;
+	border-bottom: 1px solid var(--gm3-sys-color-outline-variant, #c4c7c5);
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+}
+
+[cmdk-input] {
+	flex: 1;
+	min-width: 0;
+	height: 56px;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--gm3-sys-color-on-surface, #1f1f1f);
+	font: inherit;
+	font-size: 16px;
+}
+
+[cmdk-input]::placeholder {
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+}
+
+[cmdk-list] {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 8px;
+	scroll-padding: 8px;
+}
+
+[cmdk-group-heading] {
+	padding: 8px 12px 4px;
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.1px;
+}
+
+[cmdk-item] {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 48px;
+	padding: 4px 12px;
+	border-radius: 12px;
+	cursor: pointer;
+	user-select: none;
+}
+
+[cmdk-item][data-selected="true"] {
+	background: var(--gm3-sys-color-secondary-container, #c2e7ff);
+	color: var(--gm3-sys-color-on-secondary-container, #001d35);
+}
+
+.avatar {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	object-fit: cover;
+	font-size: 20px;
+	line-height: 1;
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+}
+
+.text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.primary,
+.secondary {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+[data-unread] .primary {
+	font-weight: 700;
+}
+
+.secondary,
+.when,
+[cmdk-item] > .icon {
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+	font-size: 12px;
+}
+
+.when {
+	flex: none;
+}
+
+[cmdk-item] > .icon {
+	font-size: 16px;
+}
+
+[data-selected="true"] .secondary,
+[data-selected="true"] .when,
+[data-selected="true"] > .icon {
+	color: inherit;
+}
+
+[cmdk-empty] {
+	padding: 24px 12px;
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+	text-align: center;
+}
+
+.footer {
+	display: flex;
+	gap: 16px;
+	padding: 8px 20px;
+	border-top: 1px solid var(--gm3-sys-color-outline-variant, #c4c7c5);
+	color: var(--gm3-sys-color-on-surface-variant, #444746);
+	font-size: 12px;
+}
+
+.scopes {
+	display: flex;
+	gap: 12px;
+	margin-left: auto;
+}
+
+kbd {
+	display: inline-block;
+	min-width: 1.5em;
+	margin-right: 2px;
+	padding: 0 4px;
+	border: 1px solid var(--gm3-sys-color-outline-variant, #c4c7c5);
+	border-radius: 4px;
+	font: inherit;
+	text-align: center;
+}

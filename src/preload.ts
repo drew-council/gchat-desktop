@@ -8,5 +8,7 @@
 //   window.addEventListener("keydown", (event) => { ... }, { capture: true });
 
 import { installCopyButton } from "./copy-button";
+import { installSwitcher } from "./switcher";
 
 installCopyButton();
+installSwitcher();

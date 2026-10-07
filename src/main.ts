@@ -12,6 +12,7 @@ import {
 	unwrapRedirect,
 } from "./links";
 import patches from "./patches.css" with { type: "text" };
+import { isSwitcherShortcut, TOGGLE_SWITCHER } from "./switcher/shortcut";
 
 // Google refuses to sign in browsers that identify as embedded, so present as
 // the plain Chrome that Electron is built on.
@@ -76,6 +77,19 @@ function manage(contents: WebContents) {
 			event.preventDefault();
 			openExternal(event.url);
 		}
+	});
+
+	// Seen here, the shortcut works whichever frame has focus, and Chat never
+	// gets it.
+	contents.on("before-input-event", (event, input) => {
+		if (
+			!isSwitcherShortcut(input, process.platform) ||
+			!isChatUrl(contents.getURL())
+		) {
+			return;
+		}
+		event.preventDefault();
+		if (!input.isAutoRepeat) contents.send(TOGGLE_SWITCHER);
 	});
 
 	contents.on("dom-ready", () => {

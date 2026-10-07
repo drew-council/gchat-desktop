@@ -6,6 +6,10 @@ like a single-site browser, with a few differences from the Chrome PWA:
 - Links that leave Chat open in your default browser (via `xdg-open` on Linux),
   unwrapped from Google's `google.com/url?q=` redirector.
 - Sign-in, Chat pop-outs, and SSO flows stay in the app.
+- <kbd>Cmd</kbd>+<kbd>K</kbd> (<kbd>Ctrl</kbd>+<kbd>K</kbd> on Linux) opens a
+  quick switcher, like Slack's and Discord's, for jumping to any DM, space,
+  group conversation, or thread. Prefix the search with `@`, `#`, or `>` to
+  only look through people, spaces, or threads.
 - `src/patches.css` is injected into Chat, and `src/preload.ts` runs before
   Chat's scripts, for UI and keybind tweaks.
 
@@ -22,6 +26,10 @@ bun test
 
 On NixOS, the dev shell points the `electron` npm package at nixpkgs' Electron,
 so keep the version in `package.json` in step with nixpkgs' `electron`.
+
+The Nix package installs npm dependencies from `bun.nix`, which
+[bun2nix](https://github.com/nix-community/bun2nix) regenerates from `bun.lock`
+after every `bun install`; commit the two together.
 
 Run `nix fmt` to format the repository.
 

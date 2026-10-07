@@ -1,7 +1,7 @@
 {
   lib,
   stdenvNoCC,
-  bun,
+  bun2nix,
   electron,
   librsvg,
   makeWrapper,
@@ -42,13 +42,14 @@ stdenvNoCC.mkDerivation {
     root = ../.;
     fileset = lib.fileset.unions [
       ../package.json
+      ../bun.lock
       ../src
       ../assets
     ];
   };
 
   nativeBuildInputs = [
-    bun
+    bun2nix.hook
     librsvg
     makeWrapper
   ]
@@ -60,11 +61,15 @@ stdenvNoCC.mkDerivation {
     python3
   ];
 
-  # The app has no runtime npm dependencies, so building is just bundling the
-  # sources; no `bun install` needed.
+  # The hook installs node_modules from bun.nix, the bun.lock dependencies
+  # prefetched by Nix. Everything is bundled into dist, so they aren't needed
+  # at runtime, and their install scripts (like Electron downloading itself)
+  # aren't needed at all.
+  bunDeps = bun2nix.fetchBunDeps { bunNix = ../bun.nix; };
+  dontRunLifecycleScripts = true;
+
   buildPhase = ''
     runHook preBuild
-    export HOME=$TMPDIR
     bun run build
     runHook postBuild
   '';

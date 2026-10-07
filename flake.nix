@@ -2,6 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    bun2nix = {
+      url = "github:nix-community/bun2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     topiary-nushell = {
       url = "github:drew-council/topiary-nushell-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,14 +17,22 @@
       self,
       nixpkgs,
       flake-utils,
+      bun2nix,
       topiary-nushell,
       treefmt-nix,
       ...
     }:
+    let
+      callPackage =
+        pkgs:
+        pkgs.callPackage ./nix/package.nix {
+          bun2nix = bun2nix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        };
+    in
     {
       # Builds against the consumer's nixpkgs, including their Electron.
       overlays.default = final: _prev: {
-        gchat-desktop = final.callPackage ./nix/package.nix { };
+        gchat-desktop = callPackage final;
       };
     }
     // flake-utils.lib.eachDefaultSystem (
@@ -40,7 +52,7 @@
       {
         packages = {
           default = self.packages.${system}.gchat-desktop;
-          gchat-desktop = pkgs.callPackage ./nix/package.nix { };
+          gchat-desktop = callPackage pkgs;
         };
 
         devShells.default = pkgs.mkShell {
