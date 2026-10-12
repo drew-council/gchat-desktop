@@ -27,6 +27,9 @@ const THREAD =
 /** A conversation opened inside another view, like Home's split pane. */
 const EMBEDDED_CONVERSATION =
 	'[data-group-id][data-is-embedded="true"][data-navigation-type]';
+/** The conversation a conversation's route shows. */
+const MAIN_CONVERSATION =
+	'[data-group-id][data-is-embedded="false"][data-navigation-type]';
 /** A row in Home's list (and Mentions'), which opens its thread or conversation in the split pane. */
 const LIST_ROW = "[role=listitem][data-group-id][data-group-type]";
 /** A thread's reply count under its first message, which opens the thread. */
@@ -36,14 +39,18 @@ const PANEL_CONVERSATION = '[jsname="eNEp4e"]';
 /** Close buttons: the split pane's, then the side panel's beside a conversation. */
 const PANEL_CLOSE = '[jsname="plIjzf"], [jsname="TvD9Pc"] button';
 
-/** How long after arriving somewhere the panel is still part of getting there. */
-const ARRIVAL_MS = 1000;
-/** How recently the user must have clicked or typed for a change in the panel to be theirs. */
-const INPUT_MS = 3000;
-/** How long the page must go unchanged before reading its panel. */
-const SETTLE_MS = 250;
-/** How many times to try putting a panel back before settling for what's shown. */
-const RESTORE_ATTEMPTS = 3;
+/** When to look for what a click or key press did to the panel, after it. */
+const INPUT_CHECKS_MS = [250, 600, 1200, 2500];
+/** How often to look at the panel while putting one back. */
+const RESTORE_POLL_MS = 50;
+/** How long Chat gets to show a panel after one of our clicks before trying again. */
+const RESTORE_RETRY_MS = 700;
+/** How long to keep the panel put back, since Chat may close it as it finishes routing. */
+const RESTORE_HOLD_MS = 1000;
+/** How long to wait for Chat to render something to put the panel back with. */
+const RESTORE_GIVE_UP_MS = 6000;
+/** How long to wait for a thread's replies link before routing to the thread instead. */
+const RESTORE_ROUTE_AFTER_MS = 1500;
 const STORAGE_KEY = "gchat-desktop:panels";
 const STORED_ENTRIES = 200;
 
@@ -89,6 +96,13 @@ function readPanel(): Panel | undefined {
 	return { group, topic };
 }
 
+/** Whether Chat has rendered the page its route is for, rather than the one it left. */
+function showsRoute(): boolean {
+	const place = parsePlace(location.pathname);
+	const main = groupIdOf(shown(MAIN_CONVERSATION));
+	return place ? Boolean(main?.endsWith(`/${place.group}`)) : !main;
+}
+
 /**
  * Clicks an element the way a mouse would: Chat acts on some, like Home's
  * rows, only after seeing the button go down on them.
@@ -128,8 +142,11 @@ function clickShown(selector: string, within?: Element): boolean {
 	return Boolean(target);
 }
 
-/** Takes one step toward showing `target` in the panel; false if nothing could. */
-function showPanel(target: Panel | undefined): boolean {
+/**
+ * Takes one step toward showing `target` in the panel; false if nothing on
+ * the page can yet. With `canRoute`, routes to a thread Chat hasn't rendered.
+ */
+function showPanel(target: Panel | undefined, canRoute = false): boolean {
 	const current = panelElement();
 	if (!target) return Boolean(current) && clickShown(PANEL_CLOSE, current);
 
@@ -145,7 +162,13 @@ function showPanel(target: Panel | undefined): boolean {
 		// Its conversation has scrolled it out of the page, but Chat can route
 		// to a thread beside its conversation.
 		const place = parsePlace(location.pathname);
-		if (group && place && !place.topic && group.endsWith(`/${place.group}`)) {
+		if (
+			canRoute &&
+			group &&
+			place &&
+			!place.topic &&
+			group.endsWith(`/${place.group}`)
+		) {
 			navigate(conversationPath(group, topic), { replace: true });
 			return true;
 		}
@@ -166,11 +189,30 @@ function showPanel(target: Panel | undefined): boolean {
 interface Restoring {
 	entry: string;
 	target: string;
-	attempts: number;
+	startedAt: number;
+	actedAt: number;
+	matchedAt?: number;
 }
+
+/** The user's last click or key press, and what came of it. */
+interface Input {
+	/** Chat went somewhere since, so the panel changed with it. */
+	navigated: boolean;
+	/** The panel's change already has an entry, which later changes update. */
+	recorded: boolean;
+}
+
+/** Turns on logging of what this module sees and does, for debugging. */
+const DEBUG_KEY = "gchat-desktop:debug-panel-history";
 
 export function installPanelHistory() {
 	if (location.hostname !== "chat.google.com") return;
+
+	const debug = (...args: unknown[]) => {
+		if (localStorage.getItem(DEBUG_KEY)) {
+			console.debug("[panel-history]", ...args);
+		}
+	};
 
 	/** What the panel showed on each history entry, by its key, which survives Chat's `replaceState`s. */
 	const panels = new Map<string, string>(
@@ -180,6 +222,7 @@ export function installPanelHistory() {
 		][],
 	);
 	const remember = (entry: string, panel: string) => {
+		if (panels.get(entry) !== panel) debug("remember", entry, panel);
 		panels.delete(entry);
 		panels.set(entry, panel);
 		for (const old of panels.keys()) {
@@ -191,71 +234,85 @@ export function installPanelHistory() {
 		sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...panels])),
 	);
 
-	let arrivedAt = performance.now();
-	let inputAt = Number.NEGATIVE_INFINITY;
-	for (const type of ["pointerdown", "keydown"]) {
-		window.addEventListener(
-			type,
-			(event) => {
-				if (event.isTrusted) inputAt = performance.now();
-			},
-			{ capture: true },
-		);
-	}
+	let input: Input | undefined;
 	let restoring: Restoring | undefined;
-	/**
-	 * What's shown on an entry whose panel couldn't be put back, which isn't
-	 * a change of its own. The entry keeps its panel to try again next time.
-	 */
-	let unrestored: { entry: string; panel: string } | undefined;
 	let pushing = false;
+	/** Set while going back for the user, where the page already shows where it's going. */
+	let closing = false;
 	let url = location.href;
-
-	const restoreStep = (entry: string): boolean => {
-		if (!restoring) return false;
-		if (restoring.entry !== entry) {
-			restoring = undefined;
-			return false;
-		}
-		const current = panelKey(readPanel());
-		if (current === restoring.target) {
-			restoring = undefined;
-		} else if (
-			restoring.attempts++ < RESTORE_ATTEMPTS &&
-			showPanel(parsePanelKey(restoring.target))
-		) {
-			// Check again even if Chat's change doesn't touch the page.
-			schedule(SETTLE_MS * 3);
-		} else {
-			restoring = undefined;
-			unrestored = { entry, panel: current };
-		}
-		return true;
+	const timers = new Set<ReturnType<typeof setTimeout>>();
+	const after = (delay: number, callback: () => void) => {
+		const timer = setTimeout(() => {
+			timers.delete(timer);
+			callback();
+		}, delay);
+		timers.add(timer);
+	};
+	const cancelTimers = () => {
+		for (const timer of timers) clearTimeout(timer);
+		timers.clear();
 	};
 
-	const check = () => {
+	const stopRestoring = () => {
+		if (!restoring) return;
 		const entry = navigation.currentEntry;
-		if (!entry || restoreStep(entry.key)) return;
+		// Whatever is shown when it stops is what the entry shows now.
+		if (entry?.key === restoring.entry) {
+			remember(entry.key, panelKey(readPanel()));
+		}
+		debug("stop restoring", restoring);
+		restoring = undefined;
+	};
 
-		const panel = panelKey(readPanel());
-		const recorded = panels.get(entry.key);
-		if (
-			recorded === panel ||
-			(unrestored?.entry === entry.key && unrestored.panel === panel)
-		) {
+	const restoreTick = () => {
+		if (!restoring) return;
+		const entry = navigation.currentEntry;
+		if (entry?.key !== restoring.entry) {
+			restoring = undefined;
 			return;
 		}
-		// Only the user changes the panel in place. Otherwise it's part of
-		// arriving, or Chat loading the page fresh without the panel it had.
 		const now = performance.now();
-		if (
-			recorded === undefined ||
-			now - arrivedAt < ARRIVAL_MS ||
-			now - inputAt > INPUT_MS
-		) {
+		const elapsed = now - restoring.startedAt;
+		if (panelKey(readPanel()) === restoring.target) {
+			restoring.matchedAt ??= now;
+			if (now - restoring.matchedAt >= RESTORE_HOLD_MS) {
+				debug("restored", restoring);
+				restoring = undefined;
+				return;
+			}
+		} else {
+			restoring.matchedAt = undefined;
+			if (elapsed >= RESTORE_GIVE_UP_MS) {
+				stopRestoring();
+				return;
+			}
+			if (
+				now - restoring.actedAt >= RESTORE_RETRY_MS &&
+				showsRoute() &&
+				showPanel(
+					parsePanelKey(restoring.target),
+					elapsed >= RESTORE_ROUTE_AFTER_MS,
+				)
+			) {
+				debug("restore step", restoring.target);
+				restoring.actedAt = now;
+			}
+		}
+		after(RESTORE_POLL_MS, restoreTick);
+	};
+
+	/** Records what the user's input did to the panel, if anything. */
+	const checkInput = () => {
+		const entry = navigation.currentEntry;
+		if (!input || restoring || !entry) return;
+		const panel = panelKey(readPanel());
+		const recorded = panels.get(entry.key);
+		if (recorded === panel) return;
+		if (recorded === undefined || input.navigated || input.recorded) {
 			remember(entry.key, panel);
 			return;
 		}
+		input.recorded = true;
 
 		// Closing the panel goes back to how the page was before it opened.
 		const previous = navigation.entries()[entry.index - 1];
@@ -264,42 +321,79 @@ export function installPanelHistory() {
 			previous?.url === location.href &&
 			panels.get(previous.key) === ""
 		) {
-			restoring = { entry: previous.key, target: "", attempts: 0 };
+			debug("closed, so going back");
+			closing = true;
 			history.back();
 			return;
 		}
 		pushing = true;
 		history.pushState(history.state, "", location.href);
 		pushing = false;
+		debug("push", panel);
 		if (navigation.currentEntry) remember(navigation.currentEntry.key, panel);
 	};
 
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const schedule = (delay = SETTLE_MS) => {
-		clearTimeout(timer);
-		timer = setTimeout(check, delay);
+	const onInput = (event: Event) => {
+		if (!event.isTrusted) return;
+		// Only the main button picks things; the side buttons go back and forward.
+		if (event instanceof PointerEvent && event.button !== 0) return;
+		// Typing doesn't open panels, and it shouldn't pay for looking.
+		const target = event.target;
+		if (
+			event instanceof KeyboardEvent &&
+			target instanceof HTMLElement &&
+			(target.isContentEditable || target.matches("input, textarea")) &&
+			event.key !== "Enter"
+		) {
+			return;
+		}
+		stopRestoring();
+		cancelTimers();
+		// A change since the last input that nothing has recorded yet was its doing.
+		if (input) checkInput();
+		const entry = navigation.currentEntry;
+		// Otherwise, whatever changed since happened without the user (like
+		// Chat loading the page fresh) and is just how this entry is now.
+		if (entry && !input) remember(entry.key, panelKey(readPanel()));
+		input = { navigated: false, recorded: false };
+		for (const delay of INPUT_CHECKS_MS) after(delay, checkInput);
+		after(INPUT_CHECKS_MS.at(-1) ?? 0, () => {
+			input = undefined;
+		});
 	};
+	window.addEventListener("pointerdown", onInput, { capture: true });
+	window.addEventListener("keydown", onInput, { capture: true });
 
 	navigation.addEventListener("currententrychange", (event) => {
 		const entry = navigation.currentEntry;
 		if (pushing || !entry) return;
 		const moved = location.href !== url;
 		url = location.href;
-		if (event.navigationType === "traverse") {
-			const target = panels.get(entry.key);
-			if (target !== undefined && restoring?.entry !== entry.key) {
-				restoring = { entry: entry.key, target, attempts: 0 };
-			}
-			// Let Chat route there first, then fix up the panel.
-			schedule(SETTLE_MS * 2);
-		} else if (moved) {
-			arrivedAt = performance.now();
+		if (event.navigationType !== "traverse") {
+			if (moved && input) input.navigated = true;
+			return;
 		}
-	});
 
-	new MutationObserver(() => schedule()).observe(document, {
-		subtree: true,
-		childList: true,
-		attributeFilter: ["class", "style", "hidden"],
+		// Chat routes on `popstate`, after this, so the page still shows where
+		// it's leaving.
+		const from = event.from;
+		if (from.key && restoring?.entry !== from.key && !closing) {
+			remember(from.key, panelKey(readPanel()));
+		}
+		closing = false;
+		cancelTimers();
+		input = undefined;
+		const target = panels.get(entry.key);
+		restoring = undefined;
+		if (target === undefined) return;
+		const now = performance.now();
+		restoring = {
+			entry: entry.key,
+			target,
+			startedAt: now,
+			actedAt: now - RESTORE_RETRY_MS,
+		};
+		debug("restoring", restoring);
+		after(RESTORE_POLL_MS, restoreTick);
 	});
 }
