@@ -59,8 +59,11 @@ export function parsePlace(pathname: string): Place | undefined {
 /**
  * Switches Chat to a route of its own. Chat routes on `popstate`, so pushing
  * the route and announcing it navigates in place, like following a link would.
+ * With `replace`, the route takes the current history entry's place.
  */
-export function navigate(path: string) {
-	history.pushState(null, "", inAccountOf(path, location.pathname));
+export function navigate(path: string, { replace = false } = {}) {
+	const url = inAccountOf(path, location.pathname);
+	if (replace) history.replaceState(null, "", url);
+	else history.pushState(null, "", url);
 	window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
 }

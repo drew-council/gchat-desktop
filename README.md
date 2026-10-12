@@ -10,6 +10,8 @@ like a single-site browser, with a few differences from the Chrome PWA:
   quick switcher, like Slack's and Discord's, for jumping to any DM, space,
   group conversation, or thread. Prefix the search with `@`, `#`, or `>` to
   only look through people, spaces, or threads.
+- Back and Forward (in the top bar, or the mouse's side buttons) step through
+  threads and Home's split pane too, which Chat opens without touching history.
 - `src/patches.css` is injected into Chat, and `src/preload.ts` runs before
   Chat's scripts, for UI and keybind tweaks.
 

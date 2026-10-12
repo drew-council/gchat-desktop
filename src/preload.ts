@@ -8,7 +8,11 @@
 //   window.addEventListener("keydown", (event) => { ... }, { capture: true });
 
 import { installCopyButton } from "./copy-button";
+import { installHistoryButtons } from "./history-buttons";
+import { installPanelHistory } from "./panel-history";
 import { installSwitcher } from "./switcher";
 
 installCopyButton();
+installHistoryButtons();
+installPanelHistory();
 installSwitcher();

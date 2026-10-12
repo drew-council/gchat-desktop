@@ -3,6 +3,9 @@ An Electron wrapper around Google Chat. The app is the main process in
 `src/links.test.ts`), `src/preload.ts` runs in Chat's pages and installs the
 behavior patches that each live in their own module (like
 `src/copy-button.ts`), and `src/patches.css` is injected into them.
+`src/panel-history.ts` gives Chat's side panels (threads, Home's split pane)
+history entries of their own and puts them back on Back/Forward;
+`src/history-buttons.ts` adds those buttons to the top bar.
 
 `src/switcher/` is the Cmd+K quick switcher: a `cmdk` palette rendered with
 React into a shadow root. It learns conversations and threads from Chat's DOM

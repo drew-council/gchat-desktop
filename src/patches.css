@@ -1,1 +1,8 @@
 /* Injected into Chat pages once their DOM is ready. */
+
+/* Back and Forward, when there's nowhere to go. */
+.gchat-desktop-history[aria-disabled="true"] {
+	opacity: 0.38;
+	cursor: default;
+	pointer-events: none;
+}
