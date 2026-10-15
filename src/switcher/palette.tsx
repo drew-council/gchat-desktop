@@ -1,5 +1,12 @@
 import { Command, defaultFilter } from "cmdk";
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type { Directory, Entry, Kind } from "./directory";
 import { conversationPath, type GroupId, searchPath } from "./routes";
 import { inScope, parseQuery, SCOPES, type Scope, score } from "./search";
@@ -140,6 +147,19 @@ export function Palette({ directory, current, onOpen }: PaletteProps) {
 	const entries = useSyncExternalStore(directory.subscribe, directory.entries);
 	const [input, setInput] = useState("");
 	const { scope, text } = parseQuery(input);
+	const listRef = useRef<HTMLDivElement>(null);
+
+	// cmdk selects the first match on every keystroke but scrolls the list
+	// toward the previously selected item, which can leave the item Enter will
+	// open above the viewport. Scrolling to the top on each query change keeps
+	// the selection visible. Workaround from
+	// https://github.com/pacocoursey/cmdk/issues/389; drop once cmdk ships a fix.
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => {
+			listRef.current?.scrollTo({ top: 0 });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [input]);
 
 	const byKey = useMemo(
 		() => new Map(entries.map((entry) => [entry.key, entry])),
@@ -184,7 +204,7 @@ export function Palette({ directory, current, onOpen }: PaletteProps) {
 					placeholder="Jump to a conversation, space, or thread"
 				/>
 			</div>
-			<Command.List>
+			<Command.List ref={listRef}>
 				<Command.Empty>No conversations match</Command.Empty>
 				<Command.Group heading="Conversations">
 					{conversations.map((entry) => (
