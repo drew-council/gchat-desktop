@@ -1,5 +1,13 @@
 import path from "node:path";
-import { app, BrowserWindow, shell, type WebContents } from "electron";
+import {
+	app,
+	BrowserWindow,
+	clipboard,
+	Menu,
+	shell,
+	type WebContents,
+} from "electron";
+import { contextMenuTemplate } from "./context-menu";
 import { isDev, onDevCommand } from "./dev";
 import {
 	CHAT_URL,
@@ -90,6 +98,21 @@ function manage(contents: WebContents) {
 		}
 		event.preventDefault();
 		if (!input.isAutoRepeat) contents.send(TOGGLE_SWITCHER);
+	});
+
+	contents.on("context-menu", (_event, params) => {
+		const template = contextMenuTemplate(params, {
+			replaceMisspelling: (word) => contents.replaceMisspelling(word),
+			addToDictionary: (word) =>
+				contents.session.addWordToSpellCheckerDictionary(word),
+			copyLink: (url) => clipboard.writeText(unwrapRedirect(url)),
+		});
+		if (template.length === 0) return;
+		Menu.buildFromTemplate(template).popup({
+			window: BrowserWindow.fromWebContents(contents) ?? undefined,
+			frame: params.frame ?? undefined,
+			sourceType: params.menuSourceType,
+		});
 	});
 
 	contents.on("dom-ready", () => {

@@ -6,6 +6,8 @@ behavior patches that each live in their own module (like
 `src/panel-history.ts` gives Chat's side panels (threads, Home's split pane)
 history entries of their own and puts them back on Back/Forward;
 `src/history-buttons.ts` adds those buttons to the top bar.
+`src/context-menu.ts` builds the right-click menu (spelling suggestions,
+editing, copying links), since Electron shows none of its own.
 
 `src/switcher/` is the Cmd+K quick switcher: a `cmdk` palette rendered with
 React into a shadow root. It learns conversations and threads from Chat's DOM
